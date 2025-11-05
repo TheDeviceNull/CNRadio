@@ -1,4 +1,4 @@
-# RadioPlugin v1.4.5 — Improved NowPlaying support, fallback, and duplicate prevention
+# RadioPlugin v1.4.6 — Added station descriptions to status_generator
 import vlc
 import threading
 import time
@@ -11,21 +11,34 @@ from lib.Event import Event, ProjectedEvent
 from lib.EventManager import Projection
 from lib.Logger import log
 
-# Pre-installed radio stations
+# Pre-installed radio stations with descriptions
 RADIO_STATIONS = {
-    "Radio Sidewinder": "https://radiosidewinder.out.airtime.pro:8000/radiosidewinder_b",
-    "Hutton Orbital Radio": "https://quincy.torontocast.com/hutton",
-    "SomaFM Deep Space One": "https://ice.somafm.com/deepspaceone",
-    "SomaFM Groove Salad": "https://ice.somafm.com/groovesalad",
-    "GalNET Radio": "http://listen.radionomy.com/galnet"
+    "Radio Sidewinder": {
+        "url": "https://radiosidewinder.out.airtime.pro:8000/radiosidewinder_b",
+        "description": "Fan-made station for Elite Dangerous with ambient and techno music, in-game news and ads."
+    },
+    "Hutton Orbital Radio": {
+        "url": "https://quincy.torontocast.com/hutton",
+        "description": "Community radio for Elite Dangerous with pop, rock, and humorous segments."
+    },
+    "SomaFM Deep Space One": {
+        "url": "https://ice.somafm.com/deepspaceone",
+        "description": "Experimental ambient and electronic soundscapes for deep space exploration."
+    },
+    "SomaFM Groove Salad": {
+        "url": "https://ice.somafm.com/groovesalad",
+        "description": "Downtempo and chillout music mix, ideal for relaxation and creativity."
+    },
+    "GalNET Radio": {
+        "url": "http://listen.radionomy.com/galnet",
+        "description": "Sci-fi themed station with ambient, rock, and classical music, plus GalNet news."
+    }
 }
 
-# Logging configuration
 PLUGIN_LOG_LEVEL = "INFO"
 _LEVELS = {"DEBUG": 10, "INFO": 20, "ERROR": 40}
 
 def p_log(level: str, *args):
-    """Filtered logging based on PLUGIN_LOG_LEVEL."""
     try:
         lvl = _LEVELS.get(level.upper(), 999)
         threshold = _LEVELS.get(PLUGIN_LOG_LEVEL.upper(), 999)
@@ -88,7 +101,7 @@ class RadioPlugin(PluginBase):
                 },
                 "required": ["station"]
             },
-            lambda args, states: self._start_radio(RADIO_STATIONS.get(args["station"]), args["station"], helper),
+            lambda args, states: self._start_radio(RADIO_STATIONS.get(args["station"], {}).get("url"), args["station"], helper),
             "global"
         )
         helper.register_action(
@@ -108,7 +121,7 @@ class RadioPlugin(PluginBase):
                 },
                 "required": ["station"]
             },
-            lambda args, states: self._start_radio(RADIO_STATIONS.get(args["station"]), args["station"], helper),
+            lambda args, states: self._start_radio(RADIO_STATIONS.get(args["station"], {}).get("url"), args["station"], helper),
             "global"
         )
         helper.register_action(
@@ -134,6 +147,7 @@ class RadioPlugin(PluginBase):
                 "Radio Status",
                 {
                     "available_stations": list(RADIO_STATIONS.keys()),
+                    "station_descriptions": {name: RADIO_STATIONS[name]["description"] for name in RADIO_STATIONS},
                     "current_station": states.get("CurrentRadioState", {}).get("station", ""),
                     "current_track": states.get("CurrentRadioState", {}).get("title", ""),
                     "is_playing": states.get("CurrentRadioState", {}).get("playing", False),
@@ -186,19 +200,14 @@ class RadioPlugin(PluginBase):
         while not self.stop_monitor:
             try:
                 media = self.player.get_media()
-                # Force network metadata parsing for better ICY support
                 media.parse_with_options(vlc.MediaParseFlag.network, timeout=5)
 
                 title = media.get_meta(vlc.Meta.Title)
                 now_playing = media.get_meta(vlc.Meta.NowPlaying)
 
-                # Debug log to check what VLC returns
                 p_log("DEBUG", f"Metadata check: Title={title}, NowPlaying={now_playing}")
 
-                # Prefer NowPlaying, then Title, else fallback
                 display_title = now_playing or title or f"{self.current_station} - Unknown track"
-
-                # Normalize for comparison to avoid duplicates
                 normalized_title = display_title.strip().lower()
 
                 if normalized_title and normalized_title != last_title:
