@@ -1,4 +1,4 @@
-# RadioPlugin v.2.0.1 
+# RadioPlugin v.2.0.2
 # Added Stop_Radio on Chat Stop, improved track monitoring, new Radio Station, and settings config.
 # A plugin for Covas:NEXT to stream space-themed radio stations.
 # Developed by The Device Null
@@ -32,12 +32,16 @@ RADIO_STATIONS = {
         "description": "Experimental ambient and electronic soundscapes for deep space exploration."
     },
     "SomaFM Groove Salad": {
-        "url": "https://ice.somafm.com/groovesalad",
+        "url": "http://ice1.somafm.com/groovesalad-256-mp3",
         "description": "Downtempo and chillout music mix, ideal for relaxation and creativity."
     },
     "SomaFM Space Station": {
         "url": "https://ice.somafm.com/spacestation",
         "description": "Futuristic electronic music blend, perfect for space travel vibes."
+    },
+    "SomaFM Secret Agent": {
+        "url": "http://ice1.somafm.com/secretagent-128-mp3",
+        "description": "Spy-themed lounge and downtempo music for covert operations."
     },
     "GalNET Radio": {
         "url": "http://listen.radionomy.com/galnet",
@@ -251,8 +255,10 @@ class RadioPlugin(PluginBase):
 
                 title = media.get_meta(vlc.Meta.Title)
                 now_playing = media.get_meta(vlc.Meta.NowPlaying)
+                artist = media.get_meta(vlc.Meta.Artist)
+                description = media.get_meta(vlc.Meta.Description)
 
-                p_log("DEBUG", f"Metadata check: Title={title}, NowPlaying={now_playing}")
+                p_log("DEBUG", f"[RadioPlugin]: Metadata check: Title={title}, NowPlaying={now_playing}")
 
                 display_title = now_playing or title or f"{self.current_station} - Unknown track"
                 normalized_title = display_title.strip().lower()
@@ -261,9 +267,9 @@ class RadioPlugin(PluginBase):
                     last_title = normalized_title
                     event = RadioChangedEvent(station=self.current_station, title=display_title)
                     helper.put_incoming_event(event)
-                    p_log("INFO", f"Track changed: {display_title}")
+                    p_log("INFO", f"[RadioPlugin]: Track changed: {display_title}")
             except Exception as e:
-                p_log("ERROR", f"Track monitor error: {e}")
+                p_log("ERROR", f"[RadioPlugin]: Track monitor error: {e}")
             time.sleep(10)
 
     def _set_volume(self, volume: int):
