@@ -1,4 +1,8 @@
-# RadioPlugin v1.4.6 — Added station descriptions to status_generator
+# RadioPlugin v.2.0.1 
+# Added Stop_Radio on Chat Stop, improved track monitoring, new Radio Station, and settings config.
+# A plugin for Covas:NEXT to stream space-themed radio stations.
+# Developed by The Device Null
+# Requires python-vlc: pip install python-vlc
 import vlc
 import threading
 import time
@@ -10,7 +14,9 @@ from lib.PluginHelper import PluginHelper, PluginManifest
 from lib.Event import Event, ProjectedEvent
 from lib.EventManager import Projection
 from lib.Logger import log
-
+from lib.PluginSettingDefinitions import (
+    PluginSettings, SettingsGrid, ParagraphSetting, TextSetting, TextAreaSetting
+)
 # Pre-installed radio stations with descriptions
 RADIO_STATIONS = {
     "Radio Sidewinder": {
@@ -28,6 +34,10 @@ RADIO_STATIONS = {
     "SomaFM Groove Salad": {
         "url": "https://ice.somafm.com/groovesalad",
         "description": "Downtempo and chillout music mix, ideal for relaxation and creativity."
+    },
+    "SomaFM Space Station": {
+        "url": "https://ice.somafm.com/spacestation",
+        "description": "Futuristic electronic music blend, perfect for space travel vibes."
     },
     "GalNET Radio": {
         "url": "http://listen.radionomy.com/galnet",
@@ -89,6 +99,43 @@ class RadioPlugin(PluginBase):
         self.playing = False
         self.track_monitor_thread = None
         self.stop_monitor = False
+        self.settings_config = {
+            "key": "radio_plugin_settings",
+            "label": "Radio Plugin Configuration",
+            "icon": "radio",
+            "grids": [
+                {
+                    "key": "description_grid",
+                    "label": "Plugin Description",
+                    "fields": [
+                        {
+                            "key": "plugin_description",
+                            "label": "About This Plugin",
+                            "type": "paragraph",
+                            "readonly": True,
+                            "placeholder": None,
+                            "content": "This plugin allows you to stream various space-themed radio stations."
+                        }
+                    ]
+                },
+                {
+                    "key": "preinstalled_stations",
+                    "label": "Pre-installed Stations",
+                    "fields": [
+                        {
+                            "key": "station_list",
+                            "label": "Available Stations",
+                            "type": "textarea",
+                            "readonly": True,
+                            "placeholder": None,
+                            "default_value": "\n".join([f"{name}: {info['url']}" for name, info in RADIO_STATIONS.items()]),
+                            "rows": 10,
+                            "cols": 60
+                        }
+                    ]
+                }
+            ]
+        }
 
     def register_actions(self, helper: PluginHelper):
         helper.register_action(
@@ -226,3 +273,7 @@ class RadioPlugin(PluginBase):
             return f"Volume set to {volume}"
         else:
             return "No active player to set volume."
+    def on_chat_stop(self, helper: PluginHelper):
+        if self.playing:
+            p_log("INFO", "Covas:NEXT stopped. Stopping radio playback.")
+            self._stop_radio()
