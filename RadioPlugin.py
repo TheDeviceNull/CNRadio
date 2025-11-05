@@ -70,7 +70,8 @@ class RadioChangedEvent(Event):
     text: list[str] = field(default_factory=list)
     processed_at: float = 0.0
     memorized_at: str = None
-    responded_at: str = None
+    # responded_at: str = None
+    responded_at: float = 0.0
 
     def __post_init__(self):
         self.text = [f"Radio changed to {self.station}: {self.title}"]
@@ -191,6 +192,12 @@ class RadioPlugin(PluginBase):
 
     def register_projections(self, helper: PluginHelper):
         helper.register_projection(CurrentRadioState())
+    def register_sideeffects(self, helper: PluginHelper):
+        def _on_radio_changed(event: Event, states: dict[str, Any]):
+            if isinstance(event, RadioChangedEvent):
+                p_log("INFO", f"[RadioPlugin]: Now playing on {event.station}: {event.title}")  
+                helper.say(f"Track changed to {event.title} on {event.station}.")
+        helper.register_sideeffect_handler(_on_radio_changed)
 
     def register_status_generators(self, helper: PluginHelper):
         helper.register_status_generator(
@@ -213,7 +220,7 @@ class RadioPlugin(PluginBase):
                 }
             )]
         )
-
+        self.register_sideeffects(helper)
     def on_chat_stop(self, helper: PluginHelper):
         if self.playing:
             p_log("INFO", "Covas:NEXT stopped. Stopping radio playback.")
