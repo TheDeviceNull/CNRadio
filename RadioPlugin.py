@@ -31,11 +31,11 @@ RADIO_STATIONS = {
         "description": "Downtempo and chillout music mix, ideal for relaxation and creativity."
     },
     "SomaFM Space Station": {
-        "url": "http1://ice1.somafm.com/spacestation-256-mp3",
+        "url": "http1://ice1.somafm.com/spacestation-128-mp3",
         "description": "Futuristic electronic music blend, perfect for space travel vibes."
     },
     "SomaFM Secret Agent": {
-        "url": "http://ice1.somafm.com/secretagent-256-mp3",
+        "url": "http://ice1.somafm.com/secretagent-128-mp3",
         "description": "Spy-themed lounge and downtempo music for covert operations."
     },
     "GalNET Radio": {
