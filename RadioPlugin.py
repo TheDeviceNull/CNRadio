@@ -1,16 +1,12 @@
-# RadioPlugin v2.1.4b
+# RadioPlugin v2.2.0
 # -------------------
 # Stable release for Covas:NEXT
-# - Refined track reply logic with cooldown to prevent duplicate responses
-# - Maintains reliable single reaction per genuine track change
-# - Retains debounce and volume-control stability from v2.1.0
-# - Restores full compatibility with Covas PluginHelper initialization
-# - Improved thread handling and logging consistency
-# - Fully English documentation and code comments
+# - SomaFM station support with accurate track retrieval via JSON API
 
 import vlc
 import threading
 import time
+from . import somafm_track_retriever as somaretriever
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -353,15 +349,29 @@ class RadioPlugin(PluginBase):
                     time.sleep(2)
                     continue
 
-                media = self.player.get_media()
-                if not media:
-                    time.sleep(2)
-                    continue
+                # Get track info based on station type
+                display_title = ""
+            
+                # Check if this is a SomaFM station
+                is_somafm = any(name in self.current_station.lower() for name in ["somafm", "soma.fm", "deepspaceone", "groovesalad", "spacestation", "secretagent"])
+            
+                if is_somafm:
+                    # Use the specialized SomaFM track retriever
+                    p_log("DEBUG", f"Using SomaFM track retriever for {self.current_station}")
+                    display_title = somaretriever.get_somafm_track_info(self.current_station)
+            
+                # If we couldn't get info from SomaFM API or it's not a SomaFM station,
+                # fall back to VLC metadata
+                if not display_title:
+                    media = self.player.get_media()
+                    if not media:
+                        time.sleep(2)
+                        continue
 
-                title = media.get_meta(vlc.Meta.Title)
-                now_playing = media.get_meta(vlc.Meta.NowPlaying)
-
-                display_title = now_playing or title or ""
+                    title = media.get_meta(vlc.Meta.Title)
+                    now_playing = media.get_meta(vlc.Meta.NowPlaying)
+                    display_title = now_playing or title or ""
+            
                 normalized_title = display_title.strip().lower()
 
                 if not normalized_title:
