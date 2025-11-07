@@ -83,6 +83,7 @@ The plugin responds to natural commands like:
 You can install them using command, inside the plugin folder:
 
 `pip install -r requirements.txt --target=./deps --upgrade`
+
 3. Install **VLC media player**.
 4. Restart **Covas:NEXT** and enable the plugin from the *Plugins* interface.
 
