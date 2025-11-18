@@ -174,7 +174,39 @@ class RadioPlugin(PluginBase):
         )
         
         p_log("INFO", "RadioPlugin initialized successfully")
-
+    # -----------------------------------------------------------------
+    # SomaFM track retrieval
+    # -----------------------------------------------------------------
+    def is_somafm_station(self, station_name: str) -> bool:
+        """Check if a station name refers to a SomaFM station."""
+        somafm_identifiers = ["somafm", "soma.fm"]
+        somafm_station_names = [
+            "deepspaceone", "deep space one", 
+            "groovesalad", "groove salad", 
+            "spacestation", "space station", 
+            "secretagent", "secret agent", 
+            "defcon", "lush", "synphaera"
+        ]
+    
+        station_name_lower = station_name.lower()
+    
+        # Check if it's explicitly marked as SomaFM in the name
+        for identifier in somafm_identifiers:
+            if identifier in station_name_lower:
+                return True
+    
+        # Check if it's one of the known SomaFM stations
+        for somafm_name in somafm_station_names:
+            if somafm_name in station_name_lower:
+                return True
+    
+        # Check if it's in our RADIO_STATIONS dictionary and has a SomaFM URL
+        if station_name in RADIO_STATIONS:
+            url = RADIO_STATIONS[station_name].get("url", "")
+            if "somafm.com" in url or "ice.somafm.com" in url:
+                return True
+    
+            return False
     # -----------------------------------------------------------------
     # Event handling
     # -----------------------------------------------------------------
@@ -375,9 +407,15 @@ class RadioPlugin(PluginBase):
         last_event_time = 0
         last_check_time = 0
         check_interval = 5
-        command_triggered = getattr(self, "command_triggered", False)
+        # Define check intervals
+        default_check_interval = 5  # 5 seconds for regular stations
+        somafm_check_interval = 20  # Longer interval for SomaFM stations
 
-        p_log("INFO", f"Track monitor started for {self.current_station}.")
+        command_triggered = getattr(self, "command_triggered", False)
+        is_somafm = self.is_somafm_station(self.current_station)
+        check_interval = somafm_check_interval if is_somafm else default_check_interval
+
+        p_log("INFO", f"Track monitor started for {self.current_station}.C heck interval: {check_interval}s")
     
         while not self.stop_monitor:
             try:
@@ -400,13 +438,11 @@ class RadioPlugin(PluginBase):
                     # Use the specialized SomaFM track retriever
                     p_log("DEBUG", f"Using SomaFM track retriever for {self.current_station}")
                     display_title = somaretriever.get_somafm_track_info(self.current_station)
-    
-                # If we couldn't get info from SomaFM API or it's not a SomaFM station,
-                # fall back to VLC metadata
-                if not display_title:
+                else:
+                    # Use VLC metadata for non-SomaFM stations
                     media = self.player.get_media()
                     if not media:
-                        time.sleep(1)  # Check more frequently
+                        time.sleep(1)
                         continue
 
                     title = media.get_meta(vlc.Meta.Title)
@@ -416,6 +452,7 @@ class RadioPlugin(PluginBase):
                 normalized_title = display_title.strip().lower()
 
                 if not normalized_title:
+                    p_log("DEBUG", f"No title found for {self.current_station}, will check again later")
                     # Check stop flag more frequently
                     for _ in range(5):
                         if self.stop_monitor:
@@ -424,6 +461,7 @@ class RadioPlugin(PluginBase):
                     continue
 
                 if normalized_title != last_title and (current_time - last_event_time > 5) or command_triggered:
+                    p_log("DEBUG", f"New track detected: '{display_title}' (previous: '{last_title}')")
                     last_title = normalized_title
                     last_event_time = current_time
             
@@ -441,7 +479,9 @@ class RadioPlugin(PluginBase):
                             command_triggered = False
                         except Exception as e:
                             p_log("ERROR", f"Error creating or dispatching event: {e}")
-                time.sleep(5)
+                 # Adaptive sleep based on station type
+                sleep_time = 5 if is_somafm else 1
+                time.sleep(sleep_time)
             except Exception as e:
                 p_log("ERROR", f"Track monitor error: {e}")
                 time.sleep(5)
