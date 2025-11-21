@@ -1,4 +1,4 @@
-# RadioPlugin v3.0.2
+# RadioPlugin v3.1.0
 # -------------------
 # Major update for Covas:NEXT compatibility
 # - Refactored to use new PluginBase and PluginHelper APIs
@@ -11,11 +11,14 @@
 # - Removed custom RadioChangedEvent class
 # - Using PluginEvent from lib.PluginHelper
 # - Simplified event handling
+# Added Hutton Orbital Radio support
+# - New track retriever module for Hutton Orbital Radio
 
 import vlc
 import threading
 import time
 from . import somafm_track_retriever as somaretriever
+from . import hutton_orbital_track_retriever as huttonretriever
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal, Callable
@@ -73,7 +76,7 @@ RADIO_STATIONS = {
     }
 }
 
-PLUGIN_LOG_LEVEL = "ERROR"
+PLUGIN_LOG_LEVEL = "DEBUG"
 _LEVELS = {"DEBUG": 10, "INFO": 20, "ERROR": 40}
 DEFAULT_VOLUME = 55
 DEFAULT_DJ_STYLE = "Speak like a DJ or make a witty comment"
@@ -433,11 +436,14 @@ class RadioPlugin(PluginBase):
     
                 # Check if this is a SomaFM station
                 is_somafm = any(name in self.current_station.lower() for name in ["somafm", "soma.fm", "deepspaceone", "groovesalad", "spacestation", "secretagent"])
-    
+                is_hutton = "hutton" in self.current_station.lower()
                 if is_somafm:
                     # Use the specialized SomaFM track retriever
                     p_log("DEBUG", f"Using SomaFM track retriever for {self.current_station}")
                     display_title = somaretriever.get_somafm_track_info(self.current_station)
+                elif is_hutton:
+                    p_log("DEBUG", f"Using Hutton Orbital Radio track retriever for {self.current_station}")
+                    display_title = huttonretriever.get_hutton_track_info()
                 else:
                     # Use VLC metadata for non-SomaFM stations
                     media = self.player.get_media()
