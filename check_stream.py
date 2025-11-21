@@ -5,9 +5,9 @@ import json
 from bs4 import BeautifulSoup
 
 # Stream URL to monitor
-stream_url = "https://ice.somafm.com/deepspaceone"
+stream_url = "https://ice.somafm.com/defcon"
 # SomaFM song info endpoint (using HTTP instead of HTTPS)
-song_info_url = "http://somafm.com/songs/deepspaceone.json"
+song_info_url = "http://somafm.com/songs/defcon.json"
 
 # Create VLC media player
 player = vlc.MediaPlayer(stream_url)
