@@ -7,18 +7,6 @@ It supports voice commands to play, stop, and switch stations, and announces tra
 
 ---
 
-## 🚀 What's New in Version 2.1.0
-
-- **Configuration Tab**: New settings interface with plugin description, station list, and user preferences
-- **Customizable DJ Responses**: Set how the assistant should react to track changes via settings
-- **Default Volume Setting**: Configure your preferred starting volume (default: 55)
-- **Enhanced Station Listings**: Stations now display with detailed descriptions in the settings panel
-- **Improved Track Metadata Handling**: Better detection and display of currently playing tracks
-- **Additional Radio Stations**: Added SomaFM Space Station and SomaFM Secret Agent
-- **Volume Applied on Start**: Radio stations now start at your configured default volume
-
----
-
 ## 📡 Supported Stations
 
 ### Radio Sidewinder  
