@@ -2,7 +2,7 @@
 {
     "guid": "b2c4f8a1-9e3f-4d2e-8c3a-7f1e9a2d4c01",
     "name": "RadioPlugin",
-    "version": "3.1.0",
+    "version": "3.2.0",
     "author": "The Device Null",
     "description": "Voice-controlled webradio playback for Covas:NEXT, including track announcements and station switching.",
     "entrypoint": "RadioPlugin.py",

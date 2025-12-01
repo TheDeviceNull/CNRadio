@@ -1,18 +1,24 @@
-# RadioPlugin v3.1.0
+# RadioPlugin v3.2.0
 # -------------------
-# Major update for Covas:NEXT compatibility
+# Changed Hutton Orbital URL to the "firewall-friendly" one
+# Enhanced monitoring and retriever management
+# - Implemented dynamic check intervals (initial vs. followup phases)
+# - Fixed retriever stickiness: station type re-evaluated on each monitoring cycle
+# - Ensured correct retriever selection (SomaFM/Hutton) after station changes
+# - Aligned Hutton Orbital Radio with SomaFM timing (120s initial, 20s reduced)
+# - After track announcement, maintain long initial interval to avoid aggressive polling
+# - Added debug logging for interval decisions and station monitoring state
+# - Improved track change event payload to use current_station consistently
+#
+# Previous versions (v3.1.0 and earlier)
+# - Major update for Covas:NEXT compatibility
 # - Refactored to use new PluginBase and PluginHelper APIs
 # - Converted RadioChangedEvent to PluginEvent
 # - Implemented new event registration system
 # - Improved thread management and error handling
 # - Enhanced track change detection for SomaFM stations
 # - Added more robust volume control
-# Updated to use new event system
-# - Removed custom RadioChangedEvent class
-# - Using PluginEvent from lib.PluginHelper
-# - Simplified event handling
-# Added Hutton Orbital Radio support
-# - New track retriever module for Hutton Orbital Radio
+# - Added Hutton Orbital Radio support with new track retriever module
 
 import vlc
 import threading
@@ -39,7 +45,8 @@ RADIO_STATIONS = {
         "description": "Fan-made station for Elite Dangerous with ambient and techno music, in-game news and ads."
     },
     "Hutton Orbital Radio": {
-        "url": "https://quincy.torontocast.com:2775/stream",
+#        "url": "https://quincy.torontocast.com:2775/stream",
+        "url": "https://quincy.torontocast.com/hutton",
         "description": "Community radio for Elite Dangerous with pop, rock, and humorous segments."
     },
     "SomaFM Deep Space One": {
@@ -76,7 +83,7 @@ RADIO_STATIONS = {
     }
 }
 
-PLUGIN_LOG_LEVEL = "ERROR"
+PLUGIN_LOG_LEVEL = "INFO"
 _LEVELS = {"DEBUG": 10, "INFO": 20, "ERROR": 40}
 DEFAULT_VOLUME = 55
 DEFAULT_DJ_STYLE = "Speak like a DJ or make a witty comment. Keep it concise. Match your tone to the time of day."
@@ -409,16 +416,21 @@ class RadioPlugin(PluginBase):
         last_title = ""
         last_event_time = 0
         last_check_time = 0
-        check_interval = 5
         # Define check intervals
         default_check_interval = 5  # 5 seconds for regular stations
         somafm_check_interval = 20  # Longer interval for SomaFM stations
 
         command_triggered = getattr(self, "command_triggered", False)
-        is_somafm = self.is_somafm_station(self.current_station)
+        # Initialize station tracking so we can detect switches during monitoring
+        prev_station = self.current_station
+        is_somafm = self.is_somafm_station(prev_station) if prev_station else False
+        is_hutton = "hutton" in (prev_station or "").lower()
+        # monitoring phase: start 'initial' to announce immediately, then move to 'followup' to reduce checks
+        phase = 'initial'
+        immediate_check = False
         check_interval = somafm_check_interval if is_somafm else default_check_interval
 
-        p_log("INFO", f"Track monitor started for {self.current_station}.C heck interval: {check_interval}s")
+        p_log("INFO", f"Track monitor started for {prev_station}. Phase={phase} (SomaFM: {is_somafm}, Hutton: {is_hutton})")
     
         while not self.stop_monitor:
             try:
@@ -433,16 +445,37 @@ class RadioPlugin(PluginBase):
 
                 # Get track info based on station type
                 display_title = ""
-    
-                # Check if this is a SomaFM station
-                is_somafm = any(name in self.current_station.lower() for name in ["somafm", "soma.fm", "deepspaceone", "groovesalad", "spacestation", "secretagent"])
-                is_hutton = "hutton" in self.current_station.lower()
+
+                # Re-evaluate station type and determine dynamic intervals based on phase
+                current_station = self.current_station
+                if current_station != prev_station:
+                    p_log("INFO", f"Station changed from {prev_station} -> {current_station}, resetting monitor phase")
+                    prev_station = current_station
+                    is_somafm = self.is_somafm_station(current_station) if current_station else False
+                    is_hutton = "hutton" in (current_station or "").lower()
+                    # Reset detection state and phase on station change
+                    last_title = ""
+                    last_event_time = 0
+                    last_check_time = 0
+                    phase = 'initial'
+
+                # Compute intervals based on station type and current phase
+                if is_somafm or is_hutton:
+                    initial_interval = 120  # SomaFM & Hutton: initial long wait (metadata can be delayed)
+                    reduced_interval = 20   # SomaFM & Hutton: follow-up checks still relatively long
+                else:
+                    initial_interval = 90   # Other stations: wait ~typical track length (1-1.5 min)
+                    reduced_interval = 15   # Follow-up: shorter checks to catch next track
+
+                check_interval = initial_interval if phase == 'initial' else reduced_interval
+                p_log("DEBUG", f"Intervals initial={initial_interval}s reduced={reduced_interval}s -> using {check_interval}s (phase={phase})")
+
                 if is_somafm:
                     # Use the specialized SomaFM track retriever
-                    p_log("DEBUG", f"Using SomaFM track retriever for {self.current_station}")
-                    display_title = somaretriever.get_somafm_track_info(self.current_station)
+                    p_log("DEBUG", f"Using SomaFM track retriever for {current_station}")
+                    display_title = somaretriever.get_somafm_track_info(current_station)
                 elif is_hutton:
-                    p_log("DEBUG", f"Using Hutton Orbital Radio track retriever for {self.current_station}")
+                    p_log("DEBUG", f"Using Hutton Orbital Radio track retriever for {current_station}")
                     display_title = huttonretriever.get_hutton_track_info()
                 else:
                     # Use VLC metadata for non-SomaFM stations
@@ -477,17 +510,33 @@ class RadioPlugin(PluginBase):
                             event = PluginEvent(
                                 kind="plugin",
                                 plugin_event_name="radio_changed",
-                                plugin_event_content=[display_title, self.current_station, command_triggered]
+                                plugin_event_content=[display_title, current_station, command_triggered]
                             )                    
                             p_log("INFO", f"Track changed -> {display_title} (command triggered: {command_triggered})")
                             helper.dispatch_event(event)
                             p_log("DEBUG", "Event dispatched successfully")
+                            # After announcing a new track, keep the monitor on the longer initial interval
+                            # so we avoid aggressive polling immediately after an announcement.
+                            phase = 'initial'
                             command_triggered = False
+                            # Ensure we use the initial (longer) interval for the next check cycle
+                            try:
+                                check_interval = initial_interval
+                            except NameError:
+                                check_interval = somafm_check_interval if is_somafm or is_hutton else default_check_interval
+                            # Record the last check time so the loop waits the full initial interval
+                            last_check_time = current_time
+                            # Do not request an immediate follow-up check; wait the long interval instead
+                            p_log("DEBUG", f"Announced track; resetting to initial interval (check_interval={check_interval})")
                         except Exception as e:
                             p_log("ERROR", f"Error creating or dispatching event: {e}")
-                 # Adaptive sleep based on station type
-                sleep_time = 5 if is_somafm else 1
-                time.sleep(sleep_time)
+                # Use the calculated check interval unless an immediate check was requested
+                if immediate_check:
+                    immediate_check = False
+                    p_log("DEBUG", f"Skipping sleep to perform immediate follow-up check (using {check_interval}s next)")
+                    continue
+                # Regular sleep
+                time.sleep(check_interval)
             except Exception as e:
                 p_log("ERROR", f"Track monitor error: {e}")
                 time.sleep(5)
