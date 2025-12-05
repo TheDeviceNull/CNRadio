@@ -1,4 +1,9 @@
-# RadioPlugin v3.3.0
+# RadioPlugin v3.3.1
+# -------------------
+# Release 3.3.1 - Dec 2025
+# Added support for Radio Deejay station with dedicated track retriever.
+# Added BigFM and Radio Capital to pre-installed stations.
+# Fixed minor bugs in track monitoring and logging.
 # -------------------
 # Release 3.3.0 - Dec 2025
 # Key improvements in this release:
@@ -28,6 +33,7 @@ import time
 import unicodedata
 from . import somafm_track_retriever as somaretriever
 from . import hutton_orbital_track_retriever as huttonretriever
+from . import deejay_track_retriever as deejayretriever
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal, Callable, Optional
@@ -43,7 +49,7 @@ from lib.PluginSettingDefinitions import (
 # ---------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------
-PLUGIN_LOG_LEVEL = "ERROR"
+PLUGIN_LOG_LEVEL = "INFO"
 _LEVELS = {"DEBUG": 10, "INFO": 20, "ERROR": 40}
 DEFAULT_VOLUME = 55
 DEFAULT_DJ_STYLE = "Speak like a DJ or make a witty comment. Keep it concise. Match your tone to the time of day."
@@ -140,6 +146,18 @@ RADIO_STATIONS = {
     "BigFM": {
         "url": "https://streams.bigfm.de/bigfm-deutschland-128-mp3",
         "description": "Popular German hits and chart-toppers for energetic flights." 
+    },
+    "Radio Capital": {
+        "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/CAPITAL.mp3",
+        "description": "Italian hits and contemporary music for lively journeys."
+    },
+    "Radio DeeJay": {
+        "url": "https://streamcdnm15-4c4b867c89244861ac216426883d1ad0.msvdn.net/radiodeejay/radiodeejay/master_ma.m3u8",
+        "description": "Italian talk-show station with a mix of pop, dance, and rock music."
+    },
+    "Radio DeeJay Linetti": {
+        "url": "https://streamcdnm3-4c4b867c89244861ac216426883d1ad0.msvdn.net/webradio/deejaywfmlinus/live.m3u8",
+        "description": "Italian station featuring DJ Linux preferred songs from '80 to today."
     }
 }
 
@@ -358,11 +376,17 @@ class RadioPlugin(PluginBase):
         if not station_name:
             return False
         return "hutton" in station_name.lower()
+    @staticmethod
+    def is_deejay_station(station_name: str) -> bool:
+        """Check if a station name refers to Radio Deejay."""
+        if not station_name:
+            return False
+        return "deejay" in station_name.lower()
     
     @staticmethod
     def is_special_station(station_name: str) -> bool:
         """Check if a station requires special handling (SomaFM or Hutton)."""
-        return RadioPlugin.is_somafm_station(station_name) or RadioPlugin.is_hutton_station(station_name)
+        return (RadioPlugin.is_somafm_station(station_name) or RadioPlugin.is_hutton_station(station_name) or RadioPlugin.is_deejay_station(station_name))
     
     @staticmethod
     def normalize_title(title: str) -> str:
@@ -709,7 +733,7 @@ class RadioPlugin(PluginBase):
         """Get the current track info based on station type."""
         if not station_name:
             return ""
-            
+        
         # Use specialized retrievers for special stations
         if self.is_somafm_station(station_name):
             p_log("DEBUG", f"Using SomaFM track retriever for {station_name}")
@@ -717,16 +741,19 @@ class RadioPlugin(PluginBase):
         elif self.is_hutton_station(station_name):
             p_log("DEBUG", f"Using Hutton Orbital Radio track retriever for {station_name}")
             return huttonretriever.get_hutton_track_info()
+        elif self.is_deejay_station(station_name):
+            p_log("DEBUG", f"Using Radio Deejay track retriever for {station_name}")
+            return deejayretriever.get_deejay_track_info(station_name)
         else:
             # Use VLC metadata for standard stations
             try:
                 if not self.player:
                     return ""
-                    
+                
                 media = self.player.get_media()
                 if not media:
                     return ""
-                    
+                
                 title = media.get_meta(vlc.Meta.Title)
                 now_playing = media.get_meta(vlc.Meta.NowPlaying)
                 return now_playing or title or ""
