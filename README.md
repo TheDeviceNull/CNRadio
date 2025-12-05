@@ -1,8 +1,8 @@
 # RadioPlugin for Covas:NEXT
+
 ## 📦 Overview
 
-**RadioPlugin** is an extension for **Covas:NEXT** that allows you to listen to and control webradio stations directly from the assistant interface.  
-It supports voice commands to play, stop, and switch stations, and announces track changes when metadata is available.
+**RadioPlugin** is an extension for **Covas:NEXT** that lets you listen to and control internet radio stations directly from the assistant interface. It supports voice commands to play, stop, and switch stations, and announces track changes when metadata is available.
 
 ---
 
@@ -22,13 +22,13 @@ Experimental ambient and electronic soundscapes for deep space exploration.
 
 ### SomaFM Groove Salad  
 🔗 https://ice.somafm.com/groovesalad  
-Downtempo and chillout music mix, ideal for relaxation and creativity.
+Downtempo and chillout mix, ideal for relaxation and creativity.
 
-### SomaFM Space Station
+### SomaFM Space Station  
 🔗 https://ice.somafm.com/spacestation  
-Futuristic electronic music blend, perfect for space travel vibes.
+Futuristic electronica, ambient, and experimental tunes.
 
-### SomaFM Secret Agent
+### SomaFM Secret Agent  
 🔗 https://ice.somafm.com/secretagent  
 Spy-themed lounge and downtempo music for covert operations.
 
@@ -36,17 +36,32 @@ Spy-themed lounge and downtempo music for covert operations.
 🔗 http://listen.radionomy.com/galnet  
 Sci-fi themed station with ambient, rock, and classical music, plus GalNet news.
 
+### BigFM  
+🔗 https://streams.bigfm.de/bigfm-deutschland-128-mp3  
+Popular German hits and chart-toppers for energetic flights.
+
+### Radio Capital  
+🔗 https://playerservices.streamtheworld.com/api/livestream-redirect/CAPITAL.mp3  
+Italian hits and contemporary music for lively journeys.
+
+### Radio DeeJay  
+🔗 https://streamcdnm15-4c4b867c89244861ac216426883d1ad0.msvdn.net/radiodeejay/radiodeejay/master_ma.m3u8  
+Italian talk-show station with a mix of pop, dance, and rock music.
+
+### Radio DeeJay Linetti  
+🔗 https://streamcdnm3-4c4b867c89244861ac216426883d1ad0.msvdn.net/webradio/deejaywfmlinus/live.m3u8  
+Italian station featuring DJ Linus preferred songs from '80 to today.
+
 ---
 
 ## 🗣 Voice Commands
 
-The plugin responds to natural commands like:
-
-- `Play radio`  
-- `Play Radio Sidewinder`  
-- `Stop radio`  
-- `Change station to GalNET Radio`  
-- `Set volume to 50`  
+Examples:
+- `Play radio`
+- `Play Radio Sidewinder`
+- `Stop radio`
+- `Change station to BigFM`
+- `Set volume to 50`
 - `What's playing right now?`
 
 ---
@@ -54,39 +69,44 @@ The plugin responds to natural commands like:
 ## 🔧 Features
 
 - **Play/Stop/Change Station** via actions and voice commands.
-- **Track Monitoring**: Announces the currently playing track (`NowPlaying` or fallback).
-- **Status Reporting**: Displays full context (station, track, description).
+- **Lazy/Active Track Monitoring**: Starts in lazy mode (long intervals), switches to active mode when titles repeat.
+- **Track Announcements**: Announces current track with duplicate suppression and Unicode normalization.
+- **Playback State Persistence**: Uses `RadioPlaybackProjection` to remember station/title across sessions.
+- **New Action**: `radio_status` to retrieve current playback info.
 - **Volume Control**: Set volume (0–100).
-- **Configuration Panel**: Customize plugin behavior through settings interface.
+- **Configuration Panel**: Customize plugin behavior.
 - **Personalized DJ Style**: Configure how the assistant responds to track changes.
 
 ---
 
 ## 📥 Installation
 
-1. Copy the plugin folder into `%APPDATA%/com.covas-next.ui/plugins/` directory.
+1. Copy the plugin folder into `%APPDATA%/com.covas-next.ui/plugins/`.
 2. Ensure `python_vlc` and `vlc.py` are present in `deps/` or installed globally.
-
-You can install them using command, inside the plugin folder:
-
-`pip install -r requirements.txt --target=./deps --upgrade`
-
-3. Install **VLC media player**.
-4. Restart **Covas:NEXT** and enable the plugin from the *Plugins* interface.
+3. Install dependencies:
+   ```
+   pip install -r requirements.txt --target=./deps --upgrade
+   ```
+4. Install **VLC media player**.
+5. Restart **Covas:NEXT** and enable the plugin.
 
 ---
 
 ## ⚙️ Requirements
 
-- `python_vlc >= 3.0.12118`  
+- `python_vlc >= 3.0.12118`
 - **VLC media player** installed on the system.
 
 ---
 
-## ⚠️ VLC Dependency
+## ⚠️ Migration Notes
 
-This plugin requires [VLC media player](https://www.videolan.org/vlc/) to be installed on the system.
+- Include `deejay_track_retriever.py` in the plugin folder for DeeJay stations.
+- Requires Covas:NEXT build with **Projection** support.
+- No breaking changes for existing settings.
 
-Without this, the plugin will fail to load with an error like:
+---
 
-`Failed to load plugin CNRadio: Failed to load dynlib/dll '.\libvlc.dll'. Most likely this dynlib/dll was not found when the application was frozen.`
+## 📚 Release Notes
+
+See [CNRadio v3.3.1 Release Notes](https://github.com/TheDeviceNull/CNRadio/releases/tag/v.3.3.1).
