@@ -3,7 +3,7 @@
 # Release 3.3.2 - Dec 2025
 # Removed projection system to reduce token usage while maintaining functionality
 # Replaced with in-memory state tracking for current station and track
-# Added new radio stations: Kohina Radio, Radio CVGM, Nectarine Demoscene Radio
+# Added new radio stations: Kohina Radio, Radio CVGM, Ericade, Nectarine Demoscene Radio
 # -------------------
 # Release 3.3.1 - Dec 2025
 # Added support for Radio Deejay station with dedicated track retriever.
@@ -134,6 +134,10 @@ RADIO_STATIONS = {
     "Nectarine Demoscene Radio": {
         "url": "http://necta.burn.net:8000/nectarine",
         "description": "Demoscene music station playing tracks from the demoscene community."
+    },
+    "Radio Ericade": {
+        "url": "http://legacy.ericade.net:8000/stream/1/",
+        "description": "Computer and demoscene music."
     }
 }
 # ---------------------------------------------------------------------
