@@ -1,3 +1,8 @@
+# Radio Plugin v4.0.2
+# Release Notes:
+# -------------------
+# Added new radio stations: Enigmatic Station 1, Seven Rays, Ambient Radio UK, Echoes of BlueMars
+# Centralized station URL retrieval in get_retriever_for_station method
 # RadioPlugin v4.0.1
 # Release Notes:
 # -------------------  
@@ -28,6 +33,7 @@ import unicodedata
 from . import somafm_track_retriever as somaretriever
 from . import hutton_orbital_track_retriever as huttonretriever
 from . import deejay_track_retriever as deejayretriever
+from . import mp3_stream_track_retriever as mp3streamretriever
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal, Callable, Optional
@@ -84,88 +90,135 @@ class EnableAnnouncementsParameters(BaseModel):
 RADIO_STATIONS = {
     "Radio Sidewinder": {
         "url": "https://radiosidewinder.out.airtime.pro:8000/radiosidewinder_b",
-        "description": "Fan-made station for Elite Dangerous with ambient and techno music, in-game news and ads."
+        "description": "Fan-made station for Elite Dangerous with ambient and techno music, in-game news and ads.",
+        "type": "standard"
     },
     "Hutton Orbital Radio": {
         "url": "https://quincy.torontocast.com/hutton",
-        "description": "Community radio for Elite Dangerous with pop, rock, and humorous segments."
+        "description": "Community radio for Elite Dangerous with pop, rock, and humorous segments.",
+        "type": "Icy"
     },
     "SomaFM Deep Space One": {
         "url": "https://ice.somafm.com/deepspaceone",
-        "description": "Experimental ambient and electronic soundscapes for deep space exploration."
+        "description": "Experimental ambient and electronic soundscapes for deep space exploration.",
+        "type": "Soma"
     },
     "SomaFM Groove Salad": {
         "url": "https://ice.somafm.com/groovesalad",
-        "description": "Downtempo and chillout mix, perfect for relaxing flight time."
+        "description": "Downtempo and chillout mix, perfect for relaxing flight time.",
+        "type": "Soma"
     },
     "SomaFM Space Station": {
         "url": "https://ice.somafm.com/spacestation",
-        "description": "Futuristic electronica, ambient, and experimental tunes."
+        "description": "Futuristic electronica, ambient, and experimental tunes.",
+        "type": "Soma"
     },
     "SomaFM Secret Agent": {
         "url": "https://ice.somafm.com/secretagent",
-        "description": "Spy-themed lounge and downtempo music for covert operations."
+        "description": "Spy-themed lounge and downtempo music for covert operations.",
+        "type": "Soma"
     },
     "SomaFM Defcon": {
         "url": "https://ice.somafm.com/defcon",
-        "description": "Dark ambient and industrial music for intense situations."
+        "description": "Dark ambient and industrial music for intense situations.",
+        "type": "Soma"
     },
     "SomaFM Lush": {
         "url": "https://ice.somafm.com/lush",
-        "description": "Ambient and ethereal soundscapes for serene journeys."
+        "description": "Ambient and ethereal soundscapes for serene journeys.",
+        "type": "Soma"
     },
     "SomaFM Synphaera": {
         "url": "https://ice.somafm.com/synphaera",
-        "description": "Cinematic and ambient music for epic space adventures."
+        "description": "Cinematic and ambient music for epic space adventures.",
+        "type": "Soma"
     },
     "GalNET Radio": {
         "url": "http://listen.radionomy.com/galnet",
-        "description": "Sci-fi themed station with ambient, rock, and classical music, plus GalNet news."
+        "description": "Sci-fi themed station with ambient, rock, and classical music, plus GalNet news.",
+        "type": "standard"
     },
     "BigFM": {
         "url": "https://streams.bigfm.de/bigfm-deutschland-128-mp3",
-        "description": "Popular German hits and chart-toppers for energetic flights." 
+        "description": "Popular German hits and chart-toppers for energetic flights.",
+        "type": "standard"
     },
     "Radio Capital": {
         "url": "https://playerservices.streamtheworld.com/api/livestream-redirect/CAPITAL.mp3",
-        "description": "Italian hits and contemporary music for lively journeys."
+        "description": "Italian hits and contemporary music for lively journeys.",
+        "type": "standard"
     },
-    "Radio DeeJay": {
+    "Radio DeeJay": {   
         "url": "https://streamcdnm15-4c4b867c89244861ac216426883d1ad0.msvdn.net/radiodeejay/radiodeejay/master_ma.m3u8",
-        "description": "Italian talk-show station with a mix of pop, dance, and rock music."
+        "description": "Italian talk-show station with a mix of pop, dance, and rock music.",
+        "type": "DeeJay"
     },
     "Radio DeeJay Linetti": {
         "url": "https://streamcdnm3-4c4b867c89244861ac216426883d1ad0.msvdn.net/webradio/deejaywfmlinus/live.m3u8",
-        "description": "Italian station featuring DJ Linus preferred songs from '80 to today."
+        "description": "Italian station featuring DJ Linus preferred songs from '80 to today.",
+        "type": "DeeJay"
     },
     "Kohina Radio": {
         "url": "https://player.kohina.com/icecast/stream.opus",
-        "description": "Hand picked chip tunes from classic computers and consoles. SID, Amiga, Atari ST, Arcade, PC, and more!"
+        "description": "Hand picked chip tunes from classic computers and consoles. SID, Amiga, Atari ST, Arcade, PC, and more!",
+        "type": "standard"
     },
     "Radio CVGM": {
         "url": "http://radio.cvgm.net:8000/cvgm128",
-        "description": "Video game music station featuring soundtracks from classic and modern games, demo scene and computer music."
+        "description": "Video game music station featuring soundtracks from classic and modern games, demo scene and computer music.",
+        "type": "standard"
     },
     "Nectarine Demoscene Radio": {
         "url": "http://necta.burn.net:8000/nectarine",
-        "description": "Demoscene music station playing tracks from the demoscene community."
+        "description": "Demoscene music station playing tracks from the demoscene community.",
+        "type": "standard"
     },
     "Radio Ericade": {
         "url": "http://legacy.ericade.net:8000/stream/1/",
-        "description": "Computer and demoscene music."
+        "description": "Computer and demoscene music.",
+        "type": "standard"
     },
     "Distant Radio 33.05": {
         "url": "https://radio.distantworlds3.space/listen/distant_radio/distantradio.mp3",
-        "description": "Interstellar soundwaves through space!\nTunes so good even the vacuum can't stop the beat."
+        "description": "Interstellar soundwaves through space!\nTunes so good even the vacuum can't stop the beat.",
+        "type": "Icy"
     },
     "Pulsar FM": {
         "url": "https://radio.distantworlds3.space/listen/pulsarfm/pulsarfm.mp3",
-        "description": "Why are we here? Why are you here?\nClassic trance, trance classics pulsing across the galaxy"
+        "description": "Why are we here? Why are you here?\nClassic trance, trance classics pulsing across the galaxy",
+        "type": "Icy"
     },
     "DR Hotline": {
         "url": "https://radio.distantworlds3.space/listen/hotline/hotline.mp3",
-        "description": "For the blacklight dwellers.\nEverything is Synthetic"
+        "description": "For the blacklight dwellers.\nEverything is Synthetic",
+        "type": "Icy"
+    },
+    "Enigmatic Station 1": {
+        "url": "https://myradio24.org/8226",
+        "description": "Ambient and downtempo music for mysterious space journeys.",
+        "type": "Icy"
+    },
+    "Seven Rays": {
+        "url": "http://7rays.stream.laut.fm/7rays",
+        "description": "Chillout and ambient tunes for relaxing space travel.",
+        "type": "standard"
+    },
+    "Ambient Radio UK": {
+        "url": "http://uk2.internet-radio.com:31491/",
+        "description": "Ambient music station for serene space exploration.",
+        "type": "standard"
+    },
+    "Echoes of BlueMars": {
+        "url": "http://streams.echoesofbluemars.org/bluemars.m3u",
+        "description": "Ambient and experimental music for deep space exploration.",
+        "type": "standard"
     }
+}
+TRACK_RETRIEVERS = {
+    "Soma": somaretriever.get_somafm_track_info,
+    "Icy": mp3streamretriever.get_track_info,
+    "DeeJay": deejayretriever.get_deejay_track_info,
+    "standard": lambda url: None  # Standard stations rely on VLC metadata
 }
 # ---------------------------------------------------------------------
 # Helper logger
@@ -330,72 +383,15 @@ class RadioPlugin(PluginBase):
     # Station type detection
     # -----------------------------------------------------------------
     @staticmethod
-    def is_somafm_station(station_name: str) -> bool:
-        """Check if a station name refers to a SomaFM station."""
-        if not station_name:
-            return False
-            
-        station_name_lower = station_name.lower()
-        
-        # Check if it's explicitly marked as SomaFM in the name
-        if "somafm" in station_name_lower or "soma.fm" in station_name_lower:
-            return True
-        
-        # Check if it's one of the known SomaFM stations
-        somafm_station_names = [
-            "deepspaceone", "deep space one", 
-            "groovesalad", "groove salad", 
-            "spacestation", "space station", 
-            "secretagent", "secret agent", 
-            "defcon", "lush", "synphaera"
-        ]
-        
-        for somafm_name in somafm_station_names:
-            if somafm_name in station_name_lower:
-                return True
-        
-        # Check if it's in our RADIO_STATIONS dictionary and has a SomaFM URL
-        if station_name in RADIO_STATIONS:
-            url = RADIO_STATIONS[station_name].get("url", "")
-            if "somafm.com" in url or "ice.somafm.com" in url:
-                return True
-        
-        return False
-    
-    @staticmethod
-    def is_hutton_station(station_name: str) -> bool:
-        """Check if a station name refers to Hutton Orbital Radio."""
-        if not station_name:
-            return False
-        return "hutton" in station_name.lower()
-        
-    @staticmethod
-    def is_deejay_station(station_name: str) -> bool:
-        """Check if a station name refers to Radio Deejay."""
-        if not station_name:
-            return False
-        return "deejay" in station_name.lower()
-    # Static Method for MP3 Stream Detection
-    @staticmethod
-    def is_mp3_stream(station_name: str) -> bool:
-        """Check if a station uses an MP3 stream format."""
-        if not station_name:
-            return False
-        # Check if the station exists in our dictionary
-        if station_name in RADIO_STATIONS:
-            url = RADIO_STATIONS[station_name].get("url", "")
-            # Check if URL ends with .mp3 or contains mp3 in the path
-            url = RADIO_STATIONS[station_name].get("url", "")
-            if (url.endswith('.mp3') or '/mp3' in url) and ('BigFM' not in station_name or 'Capital' not in station_name): # Exclude BigFM and Radio Capital which uses mp3 but has its own handling
-                return True
-        return False    
     @staticmethod
     def is_special_station(station_name: str) -> bool:
-        """Check if a station requires special handling (SomaFM or Hutton)."""
-        return (RadioPlugin.is_somafm_station(station_name) or 
-                RadioPlugin.is_hutton_station(station_name) or 
-                RadioPlugin.is_deejay_station(station_name) or
-                RadioPlugin.is_mp3_stream(station_name))
+        """Check if a station requires special handling."""
+        special_types = {"Soma", "Icy", "DeeJay"}
+        station = RADIO_STATIONS.get(station_name)
+        if not station:
+            return False
+        return station.get("type") in special_types
+
     
     @staticmethod
     def normalize_title(title: str) -> str:
@@ -528,6 +524,16 @@ class RadioPlugin(PluginBase):
             method=self.enable_announcements_action,
             action_type="global"
         )
+    # -----------------------------------------------------------------
+    # Define track retriever based on station type
+    # -----------------------------------------------------------------
+    def get_retriever_for_station(self, station_name: str):
+        station = RADIO_STATIONS.get(station_name)
+        if not station:
+            return None
+
+        station_type = station.get("type", "standard")
+        return TRACK_RETRIEVERS.get(station_type)
     # -----------------------------------------------------------------
     # Action methods
     # -----------------------------------------------------------------
@@ -756,41 +762,50 @@ class RadioPlugin(PluginBase):
         p_log("INFO", f"Track monitor stopped for {state.current_station}.")
         
     def _get_track_info(self, station_name: str) -> str:
-        """Get the current track info based on station type."""
+        """Get the current track info based on station type with fallback to VLC metadata."""
         if not station_name:
             return ""
-        
-        # Use specialized retrievers for special stations
-        if self.is_somafm_station(station_name):
-            p_log("DEBUG", f"Using SomaFM track retriever for {station_name}")
-            return somaretriever.get_somafm_track_info(station_name)
-        elif self.is_hutton_station(station_name):
-            p_log("DEBUG", f"Using Hutton Orbital Radio track retriever for {station_name}")
-            return huttonretriever.get_hutton_track_info()
-        elif self.is_deejay_station(station_name):
-            p_log("DEBUG", f"Using Radio Deejay track retriever for {station_name}")
-            return deejayretriever.get_deejay_track_info(station_name)
-        elif self.is_mp3_stream(station_name):
-            p_log("DEBUG", f"Using MP3 stream track retriever for {station_name}")
-            url = RADIO_STATIONS[station_name].get("url", "")
-            from . import mp3_stream_track_retriever as mp3retriever
-            return mp3retriever.get_track_info(url)
-        else:
-            # Use VLC metadata for standard stations
+
+        station = RADIO_STATIONS.get(station_name)
+        if not station:
+            return ""
+
+        station_type = station.get("type", "standard")
+        url = station.get("url", "")
+
+        # 1) Recupera il retriever dalla mappa
+        retriever = TRACK_RETRIEVERS.get(station_type)
+        title = None
+
+        # 2) Se esiste un retriever, provalo
+        if retriever:
+            try:
+                p_log("DEBUG", f"Using {station_type} retriever for {station_name}")
+                title = retriever(url)
+            except Exception as e:
+                p_log("ERROR", f"Retriever for {station_name} failed: {e}")
+                title = None
+
+        # 3) Fallback VLC se:
+        #    - retriever = None (standard)
+        #    - retriever ha fallito
+        #    - retriever ha restituito None o stringa vuota
+        if not title:
             try:
                 if not self.player:
                     return ""
-                
+
                 media = self.player.get_media()
                 if not media:
                     return ""
-                
-                title = media.get_meta(vlc.Meta.Title)
-                now_playing = media.get_meta(vlc.Meta.NowPlaying)
-                return now_playing or title or ""
+
+                title = media.get_meta(vlc.Meta.NowPlaying) or media.get_meta(vlc.Meta.Title)
+                return title or ""
             except Exception as e:
                 p_log("ERROR", f"Error getting VLC metadata: {e}")
                 return ""
+        return title
+
     
     def _process_track_update(self, helper: PluginHelper, state: MonitorState, display_title: str, normalized_title: str):
         """Process a track update based on the current monitoring mode."""
