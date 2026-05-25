@@ -1,3 +1,19 @@
+# Radio Plugin v4.0.4
+# Release Notes:
+# -------------------
+# Fixed SomaFM track retriever: station ID extraction now correctly handles
+# playlist URLs (.pls) and direct stream URLs (e.g. groovesalad-128-mp3)
+# - "groovesalad.pls" -> "groovesalad" (was "groovesaladpls" -> 404)
+# - "groovesalad-128-mp3" -> "groovesalad" (strips quality suffix)
+# Restored somafm_track_retriever for SomaFM stations (JSON API, lighter than ICY)
+# ICY metadata fallback: "Unavailable" now triggers VLC metadata fallback
+# -------------------
+# Radio Plugin v4.0.3
+# Release Notes:
+# -------------------
+# Fixed PLS/M3U playlist URLs not playing via vlc.MediaPlayer
+# - Added resolve_playlist_url() to fetch and parse .pls/.m3u/.m3u8 before passing to VLC
+# -------------------
 # Radio Plugin v4.0.2
 # Release Notes:
 # -------------------
@@ -30,6 +46,7 @@ import vlc
 import threading
 import time
 import unicodedata
+import urllib.request
 from . import somafm_track_retriever as somaretriever
 from . import hutton_orbital_track_retriever as huttonretriever
 from . import deejay_track_retriever as deejayretriever
@@ -99,37 +116,37 @@ RADIO_STATIONS = {
         "type": "Icy"
     },
     "SomaFM Deep Space One": {
-        "url": "https://ice.somafm.com/deepspaceone",
+        "url": "https://somafm.com/deepspaceone.pls",
         "description": "Experimental ambient and electronic soundscapes for deep space exploration.",
         "type": "Soma"
     },
     "SomaFM Groove Salad": {
-        "url": "https://ice.somafm.com/groovesalad",
+        "url": "https://somafm.com/groovesalad.pls",
         "description": "Downtempo and chillout mix, perfect for relaxing flight time.",
         "type": "Soma"
     },
     "SomaFM Space Station": {
-        "url": "https://ice.somafm.com/spacestation",
+        "url": "https://somafm.com/spacestation.pls",
         "description": "Futuristic electronica, ambient, and experimental tunes.",
         "type": "Soma"
     },
     "SomaFM Secret Agent": {
-        "url": "https://ice.somafm.com/secretagent",
+        "url": "https://somafm.com/secretagent.pls",
         "description": "Spy-themed lounge and downtempo music for covert operations.",
         "type": "Soma"
     },
     "SomaFM Defcon": {
-        "url": "https://ice.somafm.com/defcon",
+        "url": "https://somafm.com/defcon.pls",
         "description": "Dark ambient and industrial music for intense situations.",
         "type": "Soma"
     },
     "SomaFM Lush": {
-        "url": "https://ice.somafm.com/lush",
+        "url": "https://somafm.com/lush.pls",
         "description": "Ambient and ethereal soundscapes for serene journeys.",
         "type": "Soma"
     },
     "SomaFM Synphaera": {
-        "url": "https://ice.somafm.com/synphaera",
+        "url": "https://somafm.com/synphaera.pls",
         "description": "Cinematic and ambient music for epic space adventures.",
         "type": "Soma"
     },
@@ -214,6 +231,43 @@ RADIO_STATIONS = {
         "type": "standard"
     }
 }
+# ---------------------------------------------------------------------
+# Playlist URL resolver
+# ---------------------------------------------------------------------
+def resolve_playlist_url(url: str) -> str:
+    """If the URL is a .pls, .m3u or .m3u8 playlist, download it and
+    return the first actual stream URL found inside. Otherwise return
+    the original URL unchanged.
+    
+    vlc.MediaPlayer does not parse playlist formats on its own, so we
+    must resolve them manually before passing to the player.
+    """
+    lower = url.lower().split('?')[0]
+    is_pls  = lower.endswith('.pls')
+    is_m3u  = lower.endswith('.m3u') or lower.endswith('.m3u8')
+    if not (is_pls or is_m3u):
+        return url
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'VLC/3.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            content = resp.read().decode('utf-8', errors='ignore')
+        for line in content.splitlines():
+            line = line.strip()
+            if is_pls:
+                # PLS format: File1=http://...
+                if line.lower().startswith('file') and '=' in line:
+                    resolved = line.split('=', 1)[1].strip()
+                    p_log("INFO", f"Resolved PLS playlist to: {resolved}")
+                    return resolved
+            else:
+                # M3U format: skip comments and empty lines
+                if line and not line.startswith('#'):
+                    p_log("INFO", f"Resolved M3U playlist to: {line}")
+                    return line
+    except Exception as e:
+        p_log("ERROR", f"Failed to resolve playlist URL '{url}': {e}")
+    return url  # fallback: return original, let VLC try its luck
+
 TRACK_RETRIEVERS = {
     "Soma": somaretriever.get_somafm_track_info,
     "Icy": mp3streamretriever.get_track_info,
@@ -290,6 +344,7 @@ class RadioPlugin(PluginBase):
     def __init__(self, plugin_manifest: PluginManifest):
         super().__init__(plugin_manifest)
         self.current_station = None
+        self.current_stream_url = None  # resolved direct stream URL (no .pls/.m3u)
         self.player = None
         self.playing = False
         self.track_monitor_thread = None
@@ -594,7 +649,12 @@ class RadioPlugin(PluginBase):
         try:
             # Wait a moment to ensure previous thread is fully terminated
             time.sleep(0.5)
-    
+
+            # Resolve .pls/.m3u playlist URLs to a direct stream URL,
+            # because vlc.MediaPlayer does not parse playlist formats.
+            url = resolve_playlist_url(url)
+            self.current_stream_url = url  # save for use by track retriever
+
             self.player = vlc.MediaPlayer(url)
             self.player.play()
 #            default_volume = self.settings.get('default_volume', DEFAULT_VOLUME)
@@ -645,6 +705,7 @@ class RadioPlugin(PluginBase):
             
             self.playing = False
             self.current_station = None
+            self.current_stream_url = None
             self.monitor_state.command_triggered = False
             
             # Clear in-memory state
@@ -771,7 +832,8 @@ class RadioPlugin(PluginBase):
             return ""
 
         station_type = station.get("type", "standard")
-        url = station.get("url", "")
+        # Use the resolved direct stream URL for ICY retrieval (not the original .pls/.m3u)
+        url = self.current_stream_url or station.get("url", "")
 
         # 1) Recupera il retriever dalla mappa
         retriever = TRACK_RETRIEVERS.get(station_type)
@@ -789,8 +851,8 @@ class RadioPlugin(PluginBase):
         # 3) Fallback VLC se:
         #    - retriever = None (standard)
         #    - retriever ha fallito
-        #    - retriever ha restituito None o stringa vuota
-        if not title:
+        #    - retriever ha restituito None, stringa vuota, o "Unavailable"
+        if not title or title.strip().lower() == "unavailable":
             try:
                 if not self.player:
                     return ""

@@ -77,21 +77,30 @@ def _get_station_id(station_name: str) -> str:
 
 
 def _extract_station_id(station_name: str) -> str:
-    """Extract the station ID from the full station name."""
-    # Handle common SomaFM station names
-    if "SomaFM" in station_name:
-        # Extract the part after "SomaFM " if present
+    """Extract the station ID from the full station name or URL.
+
+    Handles three input forms:
+      - Display name:  "SomaFM Groove Salad"                      -> "groovesalad"
+      - Playlist URL:  "https://somafm.com/groovesalad.pls"       -> "groovesalad"
+      - Stream URL:    "https://ice2.somafm.com/groovesalad-128-mp3" -> "groovesalad"
+    """
+    # Handle display names like "SomaFM Groove Salad"
+    if "SomaFM" in station_name and "/" not in station_name:
         match = re.search(r'SomaFM\s+(.+)', station_name, re.IGNORECASE)
         if match:
             name_part = match.group(1).lower()
-            # Convert spaces to underscores and remove special characters
             return re.sub(r'[^a-z0-9]', '', name_part.replace(' ', ''))
-    
-    # For URLs, extract the last part
+
+    # For URLs: take the last path segment
     if "/" in station_name:
-        return station_name.split("/")[-1].lower()
-    
-    # Default: just lowercase and remove spaces/special chars
+        last_segment = station_name.split("/")[-1].lower()
+        # Strip file extension (.pls, .m3u, .mp3, etc.)
+        last_segment = re.sub(r'\.[a-z0-9]+$', '', last_segment)
+        # Strip trailing quality/format suffixes like "-128-mp3", "-64-aac"
+        last_segment = re.sub(r'-\d+-[a-z0-9]+$', '', last_segment)
+        return re.sub(r'[^a-z0-9]', '', last_segment)
+
+    # Default: lowercase, strip special chars
     return re.sub(r'[^a-z0-9]', '', station_name.lower().replace(' ', ''))
 
 
