@@ -150,11 +150,11 @@ RADIO_STATIONS = {
         "description": "Cinematic and ambient music for epic space adventures.",
         "type": "Soma"
     },
-    "GalNET Radio": {
-        "url": "http://listen.radionomy.com/galnet",
-        "description": "Sci-fi themed station with ambient, rock, and classical music, plus GalNet news.",
-        "type": "standard"
-    },
+    # "GalNET Radio": {
+    #     "url": "http://listen.radionomy.com/galnet",
+    #     "description": "Sci-fi themed station with ambient, rock, and classical music, plus GalNet news.",
+    #     "type": "standard"
+    # },
     "BigFM": {
         "url": "https://streams.bigfm.de/bigfm-deutschland-128-mp3",
         "description": "Popular German hits and chart-toppers for energetic flights.",
