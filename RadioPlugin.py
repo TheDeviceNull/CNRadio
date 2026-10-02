@@ -51,6 +51,7 @@ from . import somafm_track_retriever as somaretriever
 from . import hutton_orbital_track_retriever as huttonretriever
 from . import deejay_track_retriever as deejayretriever
 from . import mp3_stream_track_retriever as mp3streamretriever
+from . import azuracast_track_retriever as azuracastretriever
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal, Callable, Optional
@@ -198,17 +199,17 @@ RADIO_STATIONS = {
     "Distant Radio 33.05": {
         "url": "https://radio.distantworlds3.space/listen/distant_radio/distantradio.mp3",
         "description": "Interstellar soundwaves through space!\nTunes so good even the vacuum can't stop the beat.",
-        "type": "Icy"
+        "type": "AzuraCast"
     },
     "Pulsar FM": {
         "url": "https://radio.distantworlds3.space/listen/pulsarfm/pulsarfm.mp3",
         "description": "Why are we here? Why are you here?\nClassic trance, trance classics pulsing across the galaxy",
-        "type": "Icy"
+        "type": "AzuraCast"
     },
     "DR Hotline": {
         "url": "https://radio.distantworlds3.space/listen/hotline/hotline.mp3",
         "description": "For the blacklight dwellers.\nEverything is Synthetic",
-        "type": "Icy"
+        "type": "AzuraCast"
     },
     "Enigmatic Station 1": {
         "url": "https://myradio24.org/8226",
@@ -272,6 +273,7 @@ TRACK_RETRIEVERS = {
     "Soma": somaretriever.get_somafm_track_info,
     "Icy": mp3streamretriever.get_track_info,
     "DeeJay": deejayretriever.get_deejay_track_info,
+    "AzuraCast": azuracastretriever.get_azuracast_track_info,
     "standard": lambda url: None  # Standard stations rely on VLC metadata
 }
 # ---------------------------------------------------------------------
@@ -441,7 +443,7 @@ class RadioPlugin(PluginBase):
     @staticmethod
     def is_special_station(station_name: str) -> bool:
         """Check if a station requires special handling."""
-        special_types = {"Soma", "Icy", "DeeJay"}
+        special_types = {"Soma", "Icy", "DeeJay", "AzuraCast"}
         station = RADIO_STATIONS.get(station_name)
         if not station:
             return False
